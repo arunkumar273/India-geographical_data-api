@@ -3,24 +3,52 @@ import pandas as pd
 
 DATA_DIR = Path("data/raw")
 
-files = list(DATA_DIR.glob("*.xls")) + list(DATA_DIR.glob("*.xlsx"))
+excel_files = list(DATA_DIR.glob("*.xls")) + list(DATA_DIR.glob("*.xlsx"))
 
-total_rows = 0
+print("=" * 70)
+print("DETAILED DATASET INSPECTION")
+print("=" * 70)
 
-for file in files:
-    df = pd.read_excel(file, dtype=str)
+print(f"\nTotal Excel files: {len(excel_files)}")
 
-    total_rows += len(df)
+# Inspect the first Excel file
+file = excel_files[0]
 
-    print(f"\nFILE: {file.name}")
-    print(f"Rows: {len(df):,}")
+print(f"\nFile being inspected: {file.name}")
 
-    print("Unique State Codes:", df["MDDS STC"].nunique())
-    print("Unique District Codes:", df["MDDS DTC"].nunique())
-    print("Unique Sub-District Codes:", df["MDDS Sub_DT"].nunique())
-    print("Unique Area Codes:", df["MDDS PLCN"].nunique())
+df = pd.read_excel(file)
 
-print("\n" + "=" * 60)
-print(f"TOTAL FILES: {len(files)}")
-print(f"TOTAL ROWS: {total_rows:,}")
-print("=" * 60)
+print(f"Rows: {len(df):,}")
+print(f"Columns: {len(df.columns)}")
+
+print("\nColumn names:")
+for column in df.columns:
+    print(f"  - {column}")
+
+print("\n" + "-" * 70)
+print("FIRST 10 RECORDS")
+print("-" * 70)
+
+print(df.head(10).to_string(index=False))
+
+print("\n" + "-" * 70)
+print("DATA TYPES")
+print("-" * 70)
+
+print(df.dtypes)
+
+print("\n" + "-" * 70)
+print("MISSING VALUES")
+print("-" * 70)
+
+print(df.isnull().sum())
+
+print("\n" + "-" * 70)
+print("DUPLICATE ROWS")
+print("-" * 70)
+
+print("Duplicate rows:", df.duplicated().sum())
+
+print("\n" + "=" * 70)
+print("INSPECTION COMPLETED")
+print("=" * 70)
