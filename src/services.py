@@ -1,7 +1,8 @@
 from sqlalchemy import select
-
+import hashlib
+import secrets
 from src.database import engine
-from src.models import State,District, SubDistrict,Village
+from src.models import State,District, SubDistrict,Village,ApiKey
 
 
 def get_states():
@@ -65,12 +66,33 @@ def get_villages_by_subdistrict(sub_district_id: int):
             .order_by(Village.village_name)
         )
 
-        return result.mappings().all()    
+        return result.mappings().all()  
+      
 def search_villages(query: str, limit: int = 20):
     with engine.connect() as connection:
 
         result = connection.execute(
-            select(Village)
+            select(
+                Village.id,
+                Village.village_code,
+                Village.village_name,
+                Village.sub_district_id,
+                SubDistrict.sub_district_name.label("sub_district"),
+                District.district_name.label("district"),
+                State.state_name.label("state")
+            )
+            .join(
+                SubDistrict,
+                Village.sub_district_id == SubDistrict.id
+            )
+            .join(
+                District,
+                SubDistrict.district_id == District.id
+            )
+            .join(
+                State,
+                District.state_id == State.id
+            )
             .where(
                 Village.village_name.ilike(f"%{query}%")
             )
@@ -78,7 +100,52 @@ def search_villages(query: str, limit: int = 20):
             .limit(limit)
         )
 
-        return result.mappings().all()       
-    
+        return result.mappings().all()   
 
+def create_api_key(name: str):
+
+    raw_key = "vg_" + secrets.token_urlsafe(32)
+
+    key_hash = hashlib.sha256(
+        raw_key.encode()
+    ).hexdigest()
+
+    with engine.begin() as connection:
+
+        result = connection.execute(
+            ApiKey.__table__.insert().values(
+                key_hash=key_hash,
+                name=name,
+                is_active=True
+            )
+        )
+
+        api_key_id = result.inserted_primary_key[0]
+
+    return {
+        "id": api_key_id,
+        "name": name,
+        "api_key": raw_key
+    }       
+    
+def verify_api_key(raw_key: str):
+
+    key_hash = hashlib.sha256(
+        raw_key.encode()
+    ).hexdigest()
+
+    with engine.connect() as connection:
+
+        result = connection.execute(
+            select(ApiKey)
+            .where(
+                ApiKey.key_hash == key_hash,
+                ApiKey.is_active == True
+            )
+        ).first()
+
+        if result is None:
+            return False
+
+        return True
       

@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException
-
+from fastapi import FastAPI, HTTPException,Header
+from pydantic import BaseModel
 from src.schemas import StateResponse, DistrictResponse,SubDistrictResponse,VillageResponse
-from src.services import get_states, get_districts_by_state,get_subdistricts_by_district,get_villages_by_subdistrict,search_villages
-
+from src.services import get_states, get_districts_by_state,get_subdistricts_by_district,get_villages_by_subdistrict,search_villages,create_api_key,verify_api_key
+class ApiKeyRequest(BaseModel):
+    name: str
 
 app = FastAPI(
     title="India Village Geographical Data API",
@@ -34,7 +35,14 @@ def health():
     "/states",
     response_model=list[StateResponse]
 )
-def states():
+def states(x_api_key: str = Header(...)):
+
+    if not verify_api_key(x_api_key):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or inactive API key"
+        )
+
     return get_states()
 @app.get(
     "/states/{state_id}/districts",
@@ -106,3 +114,14 @@ def search_village_api(
         )
 
     return search_villages(q.strip(), limit)
+
+@app.post("/api-keys")
+def generate_api_key(request: ApiKeyRequest):
+
+    if not request.name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Name cannot be empty"
+        )
+
+    return create_api_key(request.name.strip())

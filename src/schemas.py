@@ -22,7 +22,11 @@ class SubDistrictResponse(BaseModel):
 
 
 class VillageResponse(BaseModel):
+
     id: int
     village_code: str
     village_name: str
     sub_district_id: int
+    sub_district: str
+    district: str
+    state: str

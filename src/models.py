@@ -1,6 +1,6 @@
-from sqlalchemy import BigInteger, Column, ForeignKey, Integer, String
+from sqlalchemy import BigInteger,Boolean, Column,DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base, relationship
-
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -80,3 +80,27 @@ class Village(Base):
         "SubDistrict",
         back_populates="villages"
     )
+
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True)
+
+    key_hash = Column(String, nullable=False, unique=True)
+
+    name = Column(String, nullable=False)
+
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
+
+    expires_at = Column(
+        DateTime,
+        nullable=True
+    )    
