@@ -1,6 +1,7 @@
 from sqlalchemy import select
 import hashlib
 import secrets
+from datetime import datetime, timezone
 from src.database import engine
 from src.models import State,District, SubDistrict,Village,ApiKey
 
@@ -137,15 +138,26 @@ def verify_api_key(raw_key: str):
     with engine.connect() as connection:
 
         result = connection.execute(
-            select(ApiKey)
+            select(
+                ApiKey.id,
+                ApiKey.is_active,
+                ApiKey.expires_at
+            )
             .where(
-                ApiKey.key_hash == key_hash,
-                ApiKey.is_active == True
+                ApiKey.key_hash == key_hash
             )
         ).first()
 
         if result is None:
             return False
 
+        if not result.is_active:
+            return False
+
+        if (
+            result.expires_at is not None
+            and result.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None)
+        ):
+            return False
+
         return True
-      
