@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select,func
 import hashlib
 import secrets
 from datetime import datetime, timezone
@@ -14,9 +14,14 @@ def get_states():
 
         return result.mappings().all()
     
-def get_districts_by_state(state_id: int):
+def get_districts_by_state(
+    state_id: int,
+    limit: int = 20,
+    offset: int = 0
+):
     with engine.connect() as connection:
 
+        # Check if state exists
         state = connection.execute(
             select(State).where(State.id == state_id)
         ).first()
@@ -24,17 +29,34 @@ def get_districts_by_state(state_id: int):
         if state is None:
             return None
 
+        # Total districts for this state
+        total = connection.execute(
+            select(func.count(District.id))
+            .where(District.state_id == state_id)
+        ).scalar_one()
+
+        # Paginated districts
         result = connection.execute(
             select(District)
             .where(District.state_id == state_id)
             .order_by(District.district_name)
+            .limit(limit)
+            .offset(offset)
         )
 
-        return result.mappings().all()  
+        return {
+            "data": result.mappings().all(),
+            "total": total
+        }
 
-def get_subdistricts_by_district(district_id: int):
+def get_subdistricts_by_district(
+    district_id: int,
+    limit: int = 20,
+    offset: int = 0
+):
     with engine.connect() as connection:
 
+        # Check if district exists
         district = connection.execute(
             select(District).where(District.id == district_id)
         ).first()
@@ -42,36 +64,79 @@ def get_subdistricts_by_district(district_id: int):
         if district is None:
             return None
 
+        # Total sub-districts for this district
+        total = connection.execute(
+            select(func.count(SubDistrict.id))
+            .where(SubDistrict.district_id == district_id)
+        ).scalar_one()
+
+        # Paginated sub-districts
         result = connection.execute(
             select(SubDistrict)
             .where(SubDistrict.district_id == district_id)
             .order_by(SubDistrict.sub_district_name)
+            .limit(limit)
+            .offset(offset)
         )
 
-        return result.mappings().all()
+        return {
+            "data": result.mappings().all(),
+            "total": total
+        }
 
     
-def get_villages_by_subdistrict(sub_district_id: int):
+def get_villages_by_subdistrict(
+    sub_district_id: int,
+    limit: int = 20,
+    offset: int = 0
+):
     with engine.connect() as connection:
 
+        # Check if sub-district exists
         subdistrict = connection.execute(
-            select(SubDistrict).where(SubDistrict.id == sub_district_id)
+            select(SubDistrict)
+            .where(SubDistrict.id == sub_district_id)
         ).first()
 
         if subdistrict is None:
             return None
 
+        # Total villages for this sub-district
+        total = connection.execute(
+            select(func.count(Village.id))
+            .where(Village.sub_district_id == sub_district_id)
+        ).scalar_one()
+
+        # Paginated villages
         result = connection.execute(
             select(Village)
             .where(Village.sub_district_id == sub_district_id)
             .order_by(Village.village_name)
+            .limit(limit)
+            .offset(offset)
         )
 
-        return result.mappings().all()  
+        return {
+            "data": result.mappings().all(),
+            "total": total
+        }
       
-def search_villages(query: str, limit: int = 20):
+def search_villages(
+    query: str,
+    limit: int = 20,
+    offset: int = 0
+):
     with engine.connect() as connection:
 
+        # Get total number of matching villages
+        total = connection.execute(
+            select(func.count(Village.id))
+            .where(
+                Village.village_name.ilike(f"%{query}%")
+            )
+        ).scalar_one()
+
+        # Get paginated village results
         result = connection.execute(
             select(
                 Village.id,
@@ -99,9 +164,13 @@ def search_villages(query: str, limit: int = 20):
             )
             .order_by(Village.village_name)
             .limit(limit)
+            .offset(offset)
         )
 
-        return result.mappings().all()   
+        return {
+            "data": result.mappings().all(),
+            "total": total
+        }
 
 def create_api_key(name: str):
 
