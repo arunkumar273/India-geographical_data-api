@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model api_keys {
+  id         Int       @id @default(autoincrement())
+  key_hash   String    @unique @db.VarChar
+  name       String    @db.VarChar
+  is_active  Boolean   @default(true)
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+  expires_at DateTime? @db.Timestamp(6)
+}
+
+model states {
+  id                Int                 @id @default(autoincrement())
+  state_code        String              @unique @db.VarChar(2)
+  state_name        String              @db.VarChar(100)
+  districts         districts[]
+  user_state_access user_state_access[]
+}
+
+model districts {
+  id            Int             @id @default(autoincrement())
+  district_code String          @db.VarChar(3)
+  district_name String          @db.VarChar(150)
+  state_id      Int
+
+  states        states          @relation(fields: [state_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sub_districts sub_districts[]
+
+  @@unique([state_id, district_code])
+  @@index([state_id], map: "idx_districts_state_id")
+}
+
+model sub_districts {
+  id                Int        @id @default(autoincrement())
+  sub_district_code String     @db.VarChar(5)
+  sub_district_name String     @db.VarChar(150)
+  district_id       Int
+
+  districts         districts  @relation(fields: [district_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  villages          villages[]
+
+  @@unique([district_id, sub_district_code])
+  @@index([district_id], map: "idx_sub_districts_district_id")
+}
+
+model villages {
+  id              BigInt        @id @default(autoincrement())
+  village_code    String        @db.VarChar(6)
+  village_name    String        @db.VarChar(200)
+  sub_district_id Int
+
+  sub_districts   sub_districts @relation(fields: [sub_district_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([sub_district_id, village_code])
+  @@index([village_name], map: "idx_villages_name")
+  @@index([sub_district_id], map: "idx_villages_sub_district_id")
+}
+
+model users {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique @db.VarChar(255)
+  password_hash String    @db.VarChar(255)
+  name          String    @db.VarChar(150)
+  role          String    @default("B2B") @db.VarChar(20)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now()) @db.Timestamp(6)
+  updated_at    DateTime  @updatedAt @db.Timestamp(6)
+
+  api_keys_new  api_keys_new[]
+  state_access  user_state_access[]
+  api_logs      api_logs[]
+
+  @@index([email])
+}
+
+model api_keys_new {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  name        String    @db.VarChar(150)
+  key_hash    String    @unique @db.VarChar(255)
+  secret_hash String    @db.VarChar(255)
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  expires_at  DateTime? @db.Timestamp(6)
+
+  user        users     @relation(fields: [user_id], references: [id])
+  api_logs    api_logs[]
+
+  @@index([user_id])
+  @@index([key_hash])
+}
+
+model user_state_access {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  state_id   Int
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  user       users    @relation(fields: [user_id], references: [id])
+  state      states   @relation(fields: [state_id], references: [id])
+
+  @@unique([user_id, state_id])
+  @@index([state_id])
+}
+
+model api_logs {
+  id            BigInt        @id @default(autoincrement())
+  api_key_id    Int
+  user_id       Int
+  endpoint      String        @db.VarChar(255)
+  method        String        @db.VarChar(10)
+  status_code   Int
+  response_time Float?
+  ip_address    String?       @db.VarChar(45)
+  created_at    DateTime      @default(now()) @db.Timestamp(6)
+
+  api_key       api_keys_new  @relation(fields: [api_key_id], references: [id])
+  user          users          @relation(fields: [user_id], references: [id])
+
+  @@index([created_at])
+  @@index([user_id])
+  @@index([api_key_id])
+}
