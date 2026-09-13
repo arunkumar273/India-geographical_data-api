@@ -2,8 +2,10 @@ require("dotenv").config();
 const adminUsersRouter = require("./routes/adminUsers");
 const express = require("express");
 const cors = require("cors");
+const adminVillagesRouter = require("./routes/adminVillages");
 const usageRouter = require("./routes/usage");
 const { PrismaClient } = require("@prisma/client");
+const plansRouter = require("./routes/plans");
 const dashboardStatesRouter = require("./routes/dashboardStates");
 const statesRouter = require("./routes/states");
 const districtsRouter = require("./routes/districts");
@@ -69,8 +71,13 @@ app.get("/health", async (req, res) => {
 // ===============================
 app.use("/v1/auth", authRouter);
 app.use("/v1/api-keys", apiKeysRouter);
+app.use(
+  "/v1/admin/villages",
+  adminVillagesRouter
+);
 // API v1 authentication
 app.use("/v1/state-access", stateAccessRouter);
+app.use("/v1/plans", plansRouter);
 app.use("/v1/admin/users", adminUsersRouter);
 app.use("/v1/admin", adminStateAccessRouter);
 app.use("/v1/admin", adminApiKeysRouter);

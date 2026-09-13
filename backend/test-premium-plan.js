@@ -1,10 +1,13 @@
 const prisma = require("./src/lib/prisma");
 
-async function check() {
+async function test() {
   try {
-    const users = await prisma.users.findMany({
+    const user = await prisma.users.update({
       where: {
-        role: "B2B",
+        id: 3,
+      },
+      data: {
+        plan_id: 2,
       },
       select: {
         id: true,
@@ -13,25 +16,21 @@ async function check() {
         plan: {
           select: {
             code: true,
-            burst_limit: true,
-          },
-        },
-        api_keys_new: {
-          select: {
-            id: true,
             name: true,
-            is_active: true,
+            daily_request_limit: true,
+            burst_limit: true,
           },
         },
       },
     });
 
-    console.log(JSON.stringify(users, null, 2));
+    console.log(JSON.stringify(user, null, 2));
   } catch (error) {
+    console.error("ERROR:");
     console.error(error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-check();
+test();

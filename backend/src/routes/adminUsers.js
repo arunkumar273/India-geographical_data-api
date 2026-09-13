@@ -6,10 +6,35 @@ const router = express.Router();
 
 router.use(adminAuth);
 
-/*
- * GET /v1/admin/users
- * List B2B users
- */
+// ============================================================
+// Helper: return safe user information
+// ============================================================
+
+function formatUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    businessName: user.business_name,
+    gstNumber: user.gst_number,
+    phoneNumber: user.phone_number,
+    role: user.role,
+    approvalStatus: user.approval_status,
+    isActive: user.is_active,
+    planId: user.plan_id,
+    approvedAt: user.approved_at,
+    rejectedAt: user.rejected_at,
+    rejectionReason: user.rejection_reason,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at
+  };
+}
+
+// ============================================================
+// GET /v1/admin/users
+// List B2B users
+// ============================================================
+
 router.get("/", async (req, res) => {
   try {
     const users = await prisma.users.findMany({
@@ -23,32 +48,48 @@ router.get("/", async (req, res) => {
         id: true,
         email: true,
         name: true,
+        business_name: true,
+        gst_number: true,
+        phone_number: true,
         role: true,
+        approval_status: true,
         is_active: true,
+        plan_id: true,
+        approved_at: true,
+        rejected_at: true,
+        rejection_reason: true,
         created_at: true,
         updated_at: true,
+
+        plan: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            daily_request_limit: true,
+            burst_limit: true
+          }
+        },
+
         _count: {
           select: {
             api_keys_new: true,
-            state_access: true
+            state_access: true,
+            api_logs: true
           }
         }
       }
     });
 
     const data = users.map((user) => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      isActive: user.is_active,
-      createdAt: user.created_at,
-      updatedAt: user.updated_at,
+      ...formatUser(user),
+      plan: user.plan,
       apiKeyCount: user._count.api_keys_new,
-      assignedStateCount: user._count.state_access
+      assignedStateCount: user._count.state_access,
+      requestCount: user._count.api_logs
     }));
 
-    res.json({
+    return res.json({
       success: true,
       count: data.length,
       data
@@ -56,7 +97,7 @@ router.get("/", async (req, res) => {
   } catch (error) {
     console.error("Failed to fetch admin users:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: "INTERNAL_ERROR",
@@ -66,11 +107,60 @@ router.get("/", async (req, res) => {
   }
 });
 
+// ============================================================
+// GET /v1/admin/users/pending
+// List pending B2B registrations
+// ============================================================
 
-/*
- * GET /v1/admin/users/:userId
- * Get one B2B user
- */
+router.get("/pending", async (req, res) => {
+  try {
+    const users = await prisma.users.findMany({
+      where: {
+        role: "B2B",
+        approval_status: "PENDING_APPROVAL"
+      },
+      orderBy: {
+        created_at: "asc"
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        business_name: true,
+        gst_number: true,
+        phone_number: true,
+        role: true,
+        approval_status: true,
+        is_active: true,
+        plan_id: true,
+        created_at: true,
+        updated_at: true
+      }
+    });
+
+    return res.json({
+      success: true,
+      count: users.length,
+      data: users.map(formatUser)
+    });
+  } catch (error) {
+    console.error("Failed to fetch pending users:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to fetch pending users"
+      }
+    });
+  }
+});
+
+// ============================================================
+// GET /v1/admin/users/:userId
+// Get one B2B user
+// ============================================================
+
 router.get("/:userId", async (req, res) => {
   try {
     const userId = Number(req.params.userId);
@@ -93,10 +183,30 @@ router.get("/:userId", async (req, res) => {
         id: true,
         email: true,
         name: true,
+        business_name: true,
+        gst_number: true,
+        phone_number: true,
         role: true,
+        approval_status: true,
         is_active: true,
+        plan_id: true,
+        approved_at: true,
+        rejected_at: true,
+        rejection_reason: true,
         created_at: true,
         updated_at: true,
+
+        plan: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            price_monthly: true,
+            daily_request_limit: true,
+            burst_limit: true,
+            state_limit: true
+          }
+        },
 
         api_keys_new: {
           select: {
@@ -121,6 +231,22 @@ router.get("/:userId", async (req, res) => {
               }
             }
           }
+        },
+
+        api_logs: {
+          select: {
+            id: true,
+            endpoint: true,
+            method: true,
+            status_code: true,
+            response_time: true,
+            ip_address: true,
+            created_at: true
+          },
+          orderBy: {
+            created_at: "desc"
+          },
+          take: 50
         }
       }
     });
@@ -135,26 +261,28 @@ router.get("/:userId", async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isActive: user.is_active,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-
+        ...formatUser(user),
+        plan: user.plan,
         apiKeys: user.api_keys_new,
-
-        states: user.state_access.map((item) => item.state)
+        states: user.state_access.map((item) => item.state),
+        requestHistory: user.api_logs.map((log) => ({
+          id: log.id.toString(),
+          endpoint: log.endpoint,
+          method: log.method,
+          statusCode: log.status_code,
+          responseTimeMs: log.response_time,
+          ipAddress: log.ip_address,
+          createdAt: log.created_at
+        }))
       }
     });
   } catch (error) {
     console.error("Failed to fetch user:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: "INTERNAL_ERROR",
@@ -164,11 +292,229 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
+// ============================================================
+// PATCH /v1/admin/users/:userId/approve
+// Approve pending B2B user
+// ============================================================
 
-/*
- * PATCH /v1/admin/users/:userId/status
- * Activate / deactivate B2B user
- */
+router.patch("/:userId/approve", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_USER_ID",
+          message: "Invalid user ID"
+        }
+      });
+    }
+
+    const existingUser = await prisma.users.findUnique({
+      where: {
+        id: userId
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "USER_NOT_FOUND",
+          message: "User not found"
+        }
+      });
+    }
+
+    if (existingUser.role === "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "ADMIN_PROTECTED",
+          message: "Administrator accounts cannot be approved using this endpoint"
+        }
+      });
+    }
+
+    if (existingUser.approval_status === "APPROVED") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "ALREADY_APPROVED",
+          message: "User is already approved"
+        }
+      });
+    }
+
+    const user = await prisma.users.update({
+      where: {
+        id: userId
+      },
+      data: {
+        approval_status: "APPROVED",
+        is_active: true,
+        approved_at: new Date(),
+        rejected_at: null,
+        rejection_reason: null
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        business_name: true,
+        role: true,
+        approval_status: true,
+        is_active: true,
+        plan_id: true,
+        approved_at: true
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: "User approved successfully",
+      data: formatUser(user)
+    });
+  } catch (error) {
+    console.error("Failed to approve user:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to approve user"
+      }
+    });
+  }
+});
+
+// ============================================================
+// PATCH /v1/admin/users/:userId/reject
+// Reject B2B user
+// ============================================================
+
+router.patch("/:userId/reject", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const { reason } = req.body;
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_USER_ID",
+          message: "Invalid user ID"
+        }
+      });
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "REJECTION_REASON_REQUIRED",
+          message: "A rejection reason is required"
+        }
+      });
+    }
+
+    const rejectionReason = reason.trim();
+
+    if (rejectionReason.length > 500) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "REJECTION_REASON_TOO_LONG",
+          message: "Rejection reason cannot exceed 500 characters"
+        }
+      });
+    }
+
+    const existingUser = await prisma.users.findUnique({
+      where: {
+        id: userId
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "USER_NOT_FOUND",
+          message: "User not found"
+        }
+      });
+    }
+
+    if (existingUser.role === "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "ADMIN_PROTECTED",
+          message: "Administrator accounts cannot be rejected"
+        }
+      });
+    }
+
+    if (existingUser.approval_status === "REJECTED") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "ALREADY_REJECTED",
+          message: "User is already rejected"
+        }
+      });
+    }
+
+    const user = await prisma.users.update({
+      where: {
+        id: userId
+      },
+      data: {
+        approval_status: "REJECTED",
+        is_active: false,
+        rejected_at: new Date(),
+        rejection_reason: rejectionReason,
+        approved_at: null
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        business_name: true,
+        role: true,
+        approval_status: true,
+        is_active: true,
+        plan_id: true,
+        rejected_at: true,
+        rejection_reason: true
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: "User rejected successfully",
+      data: formatUser(user)
+    });
+  } catch (error) {
+    console.error("Failed to reject user:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to reject user"
+      }
+    });
+  }
+});
+
+// ============================================================
+// PATCH /v1/admin/users/:userId/status
+// Activate / deactivate B2B user
+// ============================================================
+
 router.patch("/:userId/status", async (req, res) => {
   try {
     const userId = Number(req.params.userId);
@@ -216,7 +562,24 @@ router.patch("/:userId/status", async (req, res) => {
         success: false,
         error: {
           code: "ADMIN_PROTECTED",
-          message: "Administrator accounts cannot be changed using this endpoint"
+          message:
+            "Administrator accounts cannot be changed using this endpoint"
+        }
+      });
+    }
+
+    // Pending users cannot be activated manually.
+    // They must first be approved.
+    if (
+      isActive &&
+      existingUser.approval_status !== "APPROVED"
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "APPROVAL_REQUIRED",
+          message:
+            "User must be approved before the account can be activated"
         }
       });
     }
@@ -233,11 +596,12 @@ router.patch("/:userId/status", async (req, res) => {
         email: true,
         name: true,
         role: true,
+        approval_status: true,
         is_active: true
       }
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: isActive
         ? "User activated successfully"
@@ -247,7 +611,7 @@ router.patch("/:userId/status", async (req, res) => {
   } catch (error) {
     console.error("Failed to update user status:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: "INTERNAL_ERROR",

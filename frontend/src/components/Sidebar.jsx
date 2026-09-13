@@ -17,6 +17,7 @@ function Sidebar({ admin = false }) {
 
   return (
     <aside className="sidebar">
+      {/* Brand */}
       <div className="sidebar-brand">
         <div className="brand-icon">VG</div>
 
@@ -26,7 +27,11 @@ function Sidebar({ admin = false }) {
         </div>
       </div>
 
+      {/* Navigation */}
       {!admin ? (
+        /* =========================
+           B2B / DEVELOPER PORTAL
+           ========================= */
         <nav className="sidebar-nav">
           <NavLink
             to="/dashboard"
@@ -69,6 +74,9 @@ function Sidebar({ admin = false }) {
           </NavLink>
         </nav>
       ) : (
+        /* =========================
+           ADMIN PORTAL
+           ========================= */
         <nav className="sidebar-nav">
           <NavLink
             to="/admin"
@@ -110,9 +118,30 @@ function Sidebar({ admin = false }) {
             <span>◈</span>
             State Access
           </NavLink>
+
+          <NavLink
+            to="/admin/village-master"
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
+            }
+          >
+            <span>⌂</span>
+            Village Master
+          </NavLink>
+
+          <NavLink
+            to="/admin/analytics"
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
+            }
+          >
+            <span>◷</span>
+            Analytics
+          </NavLink>
         </nav>
       )}
 
+      {/* Bottom User Section */}
       <div className="sidebar-bottom">
         <div className="user-mini">
           <div className="avatar">

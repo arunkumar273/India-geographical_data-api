@@ -13,7 +13,7 @@ async function resetPassword() {
 
     const user = await prisma.users.update({
       where: {
-        email: "testb2b@example.com",
+        email: "test@testtechnologies.com",
       },
       data: {
         password_hash: passwordHash,

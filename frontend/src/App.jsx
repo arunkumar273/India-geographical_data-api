@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ApiKeys from "./pages/ApiKeys";
+import VillageMaster from "./pages/admin/VillageMaster";
 import StateAccess from "./pages/StateAccess";
 import Usage from "./pages/Usage";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
@@ -108,7 +109,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/admin/village-master"
+          element={
+            <ProtectedRoute adminOnly>
+              <VillageMaster />
+            </ProtectedRoute>
+          }
+       />
         <Route
           path="/admin/analytics"
           element={

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
   CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 
 import api from "../../services/api";
@@ -15,202 +15,522 @@ import StatCard from "../../components/StatCard";
 
 function AdminDashboard() {
   const [overview, setOverview] = useState(null);
-  const [endpoints, setEndpoints] = useState([]);
+  const [endpointData, setEndpointData] = useState([]);
+  const [users, setUsers] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadAnalytics();
+    loadDashboard();
   }, []);
 
-  const loadAnalytics = async () => {
+  const loadDashboard = async () => {
     try {
-      const [overviewResponse, endpointResponse] =
+      setLoading(true);
+      setError("");
+
+      const [overviewResponse, endpointsResponse, usersResponse] =
         await Promise.all([
           api.get("/admin/analytics/overview"),
           api.get("/admin/analytics/endpoints"),
+          api.get("/admin/users"),
         ]);
 
       setOverview(
-        overviewResponse.data.data
+        overviewResponse.data.data ||
+          overviewResponse.data
       );
 
-      setEndpoints(
-        endpointResponse.data.data || []
+      setEndpointData(
+        endpointsResponse.data.data || []
+      );
+
+      setUsers(
+        usersResponse.data.data || []
       );
     } catch (error) {
-      console.error(
-        "Analytics loading failed:",
-        error
+      console.error("Admin dashboard error:", error);
+
+      setError(
+        error.response?.data?.error?.message ||
+          "Failed to load admin dashboard."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // ============================================================
+  // USER STATISTICS
+  // ============================================================
+
+  const b2bUsers = users.filter(
+    (user) => user.role === "B2B"
+  );
+
+  const pendingUsers = b2bUsers.filter(
+    (user) =>
+      user.approvalStatus === "PENDING_APPROVAL"
+  );
+
+  const approvedUsers = b2bUsers.filter(
+    (user) =>
+      user.approvalStatus === "APPROVED"
+  );
+
+  const activeUsers = b2bUsers.filter(
+    (user) => user.isActive
+  );
+
+  // ============================================================
+  // API STATISTICS
+  // ============================================================
+
+  const totalRequests =
+    overview?.totalRequests ?? 0;
+
+  const successfulRequests =
+    overview?.successfulRequests ?? 0;
+
+  const failedRequests =
+    overview?.failedRequests ?? 0;
+
+  const successRate =
+    overview?.successRate ?? 0;
+
+  const averageResponseTime =
+    overview?.averageResponseTimeMs ??
+    overview?.averageResponseTime ??
+    0;
+
+  const activeApiKeys =
+    overview?.activeApiKeys ?? 0;
+
+  // ============================================================
+  // ENDPOINT CHART DATA
+  // ============================================================
+
+  const chartData = endpointData.map((item) => ({
+    endpoint:
+      item.endpoint?.length > 30
+        ? `${item.endpoint.substring(0, 30)}...`
+        : item.endpoint,
+
+    requests:
+      Number(item.totalRequests) || 0,
+
+    successful:
+      Number(item.successfulRequests) || 0,
+
+    failed:
+      Number(item.failedRequests) || 0,
+  }));
+
+  // ============================================================
+  // FORMAT NUMBER
+  // ============================================================
+
+  const formatNumber = (value) => {
+    return Number(value || 0).toLocaleString();
+  };
+
+  // ============================================================
+  // PAGE
+  // ============================================================
+
   return (
     <div className="dashboard-page">
       <Sidebar admin />
 
       <main className="dashboard-main">
+
+        {/* ======================================================
+            HEADER
+        ====================================================== */}
+
         <header className="dashboard-header">
           <div>
             <h1>Admin Dashboard</h1>
 
             <p>
-              Platform overview and API analytics.
+              Monitor users, API usage and platform
+              performance.
             </p>
           </div>
 
-          <div className="header-status">
-            <span className="status-dot"></span>
-            System Operational
-          </div>
+          <button
+            className="secondary-btn"
+            onClick={loadDashboard}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Refresh"}
+          </button>
         </header>
 
-        <section className="stats-grid">
-          <StatCard
-            icon="⌁"
-            title="Total Requests"
-            value={
-              loading
-                ? "..."
-                : overview?.totalRequests ?? 0
-            }
-            type="blue"
-          />
+        {/* ======================================================
+            ERROR
+        ====================================================== */}
 
-          <StatCard
-            icon="✓"
-            title="Successful Requests"
-            value={
-              loading
-                ? "..."
-                : overview?.successfulRequests ?? 0
-            }
-            type="green"
-          />
-
-          <StatCard
-            icon="!"
-            title="Failed Requests"
-            value={
-              loading
-                ? "..."
-                : overview?.failedRequests ?? 0
-            }
-            type="orange"
-          />
-
-          <StatCard
-            icon="⚡"
-            title="Average Response"
-            value={
-              loading
-                ? "..."
-                : overview?.averageResponseTime
-                  ? `${Number(
-                      overview.averageResponseTime
-                    ).toFixed(2)} ms`
-                  : "—"
-            }
-            type="purple"
-          />
-        </section>
-
-        <section className="dashboard-card chart-card">
-          <div className="card-header">
-            <h2>Endpoint Performance</h2>
-
-            <p>
-              API requests grouped by endpoint.
-            </p>
+        {error && (
+          <div className="error-box page-error">
+            {error}
           </div>
+        )}
 
-          {endpoints.length === 0 ? (
-            <div className="empty-state">
-              No API analytics available yet.
-            </div>
-          ) : (
-            <div className="chart-container">
-              <ResponsiveContainer
-                width="100%"
-                height={320}
+        {loading ? (
+          <div className="dashboard-card empty-state">
+            Loading dashboard...
+          </div>
+        ) : (
+          <>
+            {/* ==================================================
+                USER MANAGEMENT
+            ================================================== */}
+
+            <section>
+              <h2
+                style={{
+                  marginBottom: "16px",
+                }}
               >
-                <BarChart data={endpoints}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                User Management
+              </h2>
 
-                  <XAxis
-                    dataKey="endpoint"
-                    tick={{ fontSize: 11 }}
-                  />
+              <div className="stats-grid">
 
-                  <YAxis />
+                <StatCard
+                  title="Total B2B Users"
+                  value={formatNumber(
+                    b2bUsers.length
+                  )}
+                />
 
-                  <Tooltip />
+                <StatCard
+                  title="Pending Approvals"
+                  value={formatNumber(
+                    pendingUsers.length
+                  )}
+                />
 
-                  <Bar
-                    dataKey="requests"
-                    name="Requests"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </section>
+                <StatCard
+                  title="Approved Users"
+                  value={formatNumber(
+                    approvedUsers.length
+                  )}
+                />
 
-        <section className="dashboard-grid">
-          <div className="dashboard-card">
-            <h2>Platform Architecture</h2>
+                <StatCard
+                  title="Active Users"
+                  value={formatNumber(
+                    activeUsers.length
+                  )}
+                />
 
-            <div className="architecture-list">
-              <div>
-                <span>Database</span>
-                <strong>Neon PostgreSQL</strong>
+              </div>
+            </section>
+
+            {/* ==================================================
+                API OVERVIEW
+            ================================================== */}
+
+            <section
+              style={{
+                marginTop: "32px",
+              }}
+            >
+              <h2
+                style={{
+                  marginBottom: "16px",
+                }}
+              >
+                API Overview
+              </h2>
+
+              <div className="stats-grid">
+
+                <StatCard
+                  title="Total Requests"
+                  value={formatNumber(
+                    totalRequests
+                  )}
+                />
+
+                <StatCard
+                  title="Successful Requests"
+                  value={formatNumber(
+                    successfulRequests
+                  )}
+                />
+
+                <StatCard
+                  title="Failed Requests"
+                  value={formatNumber(
+                    failedRequests
+                  )}
+                />
+
+                <StatCard
+                  title="Success Rate"
+                  value={`${Number(
+                    successRate
+                  ).toFixed(2)}%`}
+                />
+
+              </div>
+            </section>
+
+            {/* ==================================================
+                PERFORMANCE
+            ================================================== */}
+
+            <section
+              style={{
+                marginTop: "32px",
+              }}
+            >
+              <h2
+                style={{
+                  marginBottom: "16px",
+                }}
+              >
+                Platform Performance
+              </h2>
+
+              <div className="stats-grid">
+
+                <StatCard
+                  title="Active API Keys"
+                  value={formatNumber(
+                    activeApiKeys
+                  )}
+                />
+
+                <StatCard
+                  title="Average Response Time"
+                  value={`${Number(
+                    averageResponseTime
+                  ).toFixed(2)} ms`}
+                />
+
+                <StatCard
+                  title="Fastest Response"
+                  value={`${Number(
+                    overview?.fastestResponseTimeMs ??
+                      0
+                  ).toFixed(2)} ms`}
+                />
+
+                <StatCard
+                  title="Slowest Response"
+                  value={`${Number(
+                    overview?.slowestResponseTimeMs ??
+                      0
+                  ).toFixed(2)} ms`}
+                />
+
+              </div>
+            </section>
+
+            {/* ==================================================
+                ENDPOINT PERFORMANCE
+            ================================================== */}
+
+            <section
+              className="dashboard-card"
+              style={{
+                marginTop: "32px",
+              }}
+            >
+              <div
+                style={{
+                  marginBottom: "20px",
+                }}
+              >
+                <h2>API Endpoint Performance</h2>
+
+                <p
+                  style={{
+                    marginTop: "6px",
+                    color: "#6b7280",
+                  }}
+                >
+                  Request volume across API endpoints.
+                </p>
               </div>
 
-              <div>
-                <span>ORM</span>
-                <strong>Prisma</strong>
-              </div>
+              {chartData.length === 0 ? (
+                <div className="empty-state">
+                  No API usage data available yet.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "380px",
+                  }}
+                >
+                  <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                  >
+                    <BarChart
+                      data={chartData}
+                      margin={{
+                        top: 10,
+                        right: 20,
+                        left: 10,
+                        bottom: 70,
+                      }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                      />
 
-              <div>
-                <span>Cache</span>
-                <strong>Upstash Redis</strong>
-              </div>
+                      <XAxis
+                        dataKey="endpoint"
+                        angle={-35}
+                        textAnchor="end"
+                        interval={0}
+                      />
 
-              <div>
-                <span>API</span>
-                <strong>Node.js + Express</strong>
-              </div>
-            </div>
-          </div>
+                      <YAxis />
 
-          <div className="dashboard-card">
-            <h2>Data Scale</h2>
+                      <Tooltip />
 
-            <div className="architecture-list">
-              <div>
-                <span>States</span>
-                <strong>30</strong>
-              </div>
+                      <Bar
+                        dataKey="requests"
+                        name="Requests"
+                      />
 
-              <div>
-                <span>Districts</span>
-                <strong>586</strong>
-              </div>
+                      <Bar
+                        dataKey="successful"
+                        name="Successful"
+                      />
 
-              <div>
-                <span>Sub-Districts</span>
-                <strong>5,764</strong>
-              </div>
+                      <Bar
+                        dataKey="failed"
+                        name="Failed"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </section>
 
-              <div>
-                <span>Villages</span>
-                <strong>619,245</strong>
+            {/* ==================================================
+                DATA FOUNDATION
+            ================================================== */}
+
+            <section
+              className="dashboard-card"
+              style={{
+                marginTop: "32px",
+              }}
+            >
+              <h2>India Geographical Data</h2>
+
+              <p
+                style={{
+                  marginTop: "6px",
+                  color: "#6b7280",
+                }}
+              >
+                Current geographical data available
+                through the platform.
+              </p>
+
+              <div
+                className="stats-grid"
+                style={{
+                  marginTop: "20px",
+                }}
+              >
+                <StatCard
+                  title="States / UTs"
+                  value="30"
+                />
+
+                <StatCard
+                  title="Districts"
+                  value="586"
+                />
+
+                <StatCard
+                  title="Sub-Districts"
+                  value="5,764"
+                />
+
+                <StatCard
+                  title="Villages"
+                  value="619,245"
+                />
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
+
+            {/* ==================================================
+                QUICK ACTIONS
+            ================================================== */}
+
+            <section
+              className="dashboard-card"
+              style={{
+                marginTop: "32px",
+              }}
+            >
+              <h2>Admin Quick Actions</h2>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  marginTop: "20px",
+                }}
+              >
+                <button
+                  className="secondary-btn"
+                  onClick={() =>
+                    (window.location.href =
+                      "/admin/users")
+                  }
+                >
+                  Manage Users
+                </button>
+
+                <button
+                  className="secondary-btn"
+                  onClick={() =>
+                    (window.location.href =
+                      "/admin/api-keys")
+                  }
+                >
+                  Manage API Keys
+                </button>
+
+                <button
+                  className="secondary-btn"
+                  onClick={() =>
+                    (window.location.href =
+                      "/admin/state-access")
+                  }
+                >
+                  Manage State Access
+                </button>
+
+                <button
+                  className="secondary-btn"
+                  onClick={() =>
+                    (window.location.href =
+                      "/admin/analytics")
+                  }
+                >
+                  View Analytics
+                </button>
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
