@@ -3,7 +3,26 @@ const prisma = require("../lib/prisma");
 const adminAuth = require("../middleware/adminAuth");
 
 const router = express.Router();
-
+/**
+ * @swagger
+ * /v1/admin/analytics/overview:
+ *   get:
+ *     summary: Get admin analytics overview
+ *     description: Returns overall API request, user, API key, success-rate, and response-time statistics.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Analytics overview retrieved successfully
+ *       401:
+ *         description: Admin authentication required
+ *       403:
+ *         description: Admin access required
+ *       500:
+ *         description: Internal server error
+ */
 router.use(adminAuth);
 
 /*

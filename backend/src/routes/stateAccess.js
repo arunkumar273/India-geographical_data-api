@@ -3,7 +3,26 @@ const prisma = require("../lib/prisma");
 const jwtAuth = require("../middleware/jwtAuth");
 
 const router = express.Router();
-
+/**
+ * @swagger
+ * /v1/state-access:
+ *   get:
+ *     summary: Get accessible states
+ *     description: Returns the states that the authenticated B2B client is authorized to access.
+ *     tags:
+ *       - State Access
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: State access list retrieved successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: B2B access required
+ *       500:
+ *         description: Internal server error
+ */
 // All State Access dashboard operations use JWT authentication.
 // API Key + API Secret are NOT required here.
 router.use(jwtAuth);

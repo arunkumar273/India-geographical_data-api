@@ -13,7 +13,7 @@ import VillageMaster from "./pages/admin/VillageMaster";
 import StateAccess from "./pages/StateAccess";
 import Usage from "./pages/Usage";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
-
+import ApiLogs from "./pages/admin/ApiLogs";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Users from "./pages/admin/Users";
 import AdminApiKeys from "./pages/admin/AdminApiKeys";
@@ -125,7 +125,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/admin/api-logs"
+          element={
+           <ProtectedRoute adminOnly>
+             <ApiLogs />
+            </ProtectedRoute>
+          }
+        />
         {/* Default */}
         <Route
           path="/"

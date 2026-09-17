@@ -4,6 +4,27 @@ const prisma = require("../lib/prisma");
 const router = express.Router();
 
 // GET /v1/states
+/**
+ * @swagger
+ * /v1/states:
+ *   get:
+ *     summary: Get all states and union territories
+ *     description: Returns the complete list of Indian states and union territories.
+ *     tags:
+ *       - Geography
+ *     security:
+ *       - ApiKeyAuth: []
+ *         ApiSecretAuth: []
+ *     responses:
+ *       200:
+ *         description: States retrieved successfully
+ *       401:
+ *         description: Invalid or missing API credentials
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/", async (req, res) => {
   try {
     const states = await prisma.states.findMany({

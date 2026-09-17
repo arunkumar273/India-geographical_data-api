@@ -3,7 +3,36 @@ const prisma = require("../lib/prisma");
 const { requireStateAccess } = require("../middleware/stateAccess");
 
 const router = express.Router();
-
+/**
+ * @swagger
+ * /v1/states/{stateId}/districts:
+ *   get:
+ *     summary: Get districts for a state
+ *     description: Returns all districts belonging to the specified state.
+ *     tags:
+ *       - Geography
+ *     security:
+ *       - ApiKeyAuth: []
+ *         ApiSecretAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: stateId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: State ID
+ *     responses:
+ *       200:
+ *         description: Districts retrieved successfully
+ *       401:
+ *         description: Invalid or missing API credentials
+ *       404:
+ *         description: State not found
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Internal server error
+ */
 router.get(
   "/states/:stateId/districts",
   requireStateAccess,

@@ -3,7 +3,26 @@ const prisma = require("../lib/prisma");
 const adminAuth = require("../middleware/adminAuth");
 
 const router = express.Router();
-
+/**
+ * @swagger
+ * /v1/admin/users:
+ *   get:
+ *     summary: List B2B users
+ *     description: Returns B2B client accounts and their account information.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *       401:
+ *         description: Admin authentication required
+ *       403:
+ *         description: Admin access required
+ *       500:
+ *         description: Internal server error
+ */
 router.use(adminAuth);
 
 // ============================================================
@@ -111,7 +130,26 @@ router.get("/", async (req, res) => {
 // GET /v1/admin/users/pending
 // List pending B2B registrations
 // ============================================================
-
+/**
+ * @swagger
+ * /v1/admin/users/pending:
+ *   get:
+ *     summary: List pending B2B users
+ *     description: Returns B2B accounts waiting for administrator approval.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pending users retrieved successfully
+ *       401:
+ *         description: Admin authentication required
+ *       403:
+ *         description: Admin access required
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/pending", async (req, res) => {
   try {
     const users = await prisma.users.findMany({
@@ -160,7 +198,34 @@ router.get("/pending", async (req, res) => {
 // GET /v1/admin/users/:userId
 // Get one B2B user
 // ============================================================
-
+/**
+ * @swagger
+ * /v1/admin/users/{userId}:
+ *   get:
+ *     summary: Get B2B user details
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: B2B user ID
+ *     responses:
+ *       200:
+ *         description: User details retrieved successfully
+ *       401:
+ *         description: Admin authentication required
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/:userId", async (req, res) => {
   try {
     const userId = Number(req.params.userId);
@@ -616,6 +681,175 @@ router.patch("/:userId/status", async (req, res) => {
       error: {
         code: "INTERNAL_ERROR",
         message: "Failed to update user status"
+      }
+    });
+  }
+});
+
+// ============================================================
+// PATCH /v1/admin/users/:userId/plan
+// Change B2B user's subscription plan
+// ============================================================
+
+router.patch("/:userId/plan", async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const { planId } = req.body;
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_USER_ID",
+          message: "Invalid user ID"
+        }
+      });
+    }
+
+    if (!Number.isInteger(Number(planId)) || Number(planId) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_PLAN_ID",
+          message: "A valid plan ID is required"
+        }
+      });
+    }
+
+    const numericPlanId = Number(planId);
+
+    const existingUser = await prisma.users.findUnique({
+      where: {
+        id: userId
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        approval_status: true,
+        is_active: true,
+        plan_id: true
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "USER_NOT_FOUND",
+          message: "User not found"
+        }
+      });
+    }
+
+    if (existingUser.role !== "B2B") {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "ACCESS_DENIED",
+          message: "Only B2B users can have subscription plans"
+        }
+      });
+    }
+
+    const plan = await prisma.plans.findUnique({
+      where: {
+        id: numericPlanId
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        price_monthly: true,
+        daily_request_limit: true,
+        burst_limit: true,
+        state_limit: true,
+        is_active: true
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "PLAN_NOT_FOUND",
+          message: "Plan not found"
+        }
+      });
+    }
+
+    if (!plan.is_active) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "PLAN_INACTIVE",
+          message: "The selected plan is inactive"
+        }
+      });
+    }
+
+    if (existingUser.plan_id === numericPlanId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "ALREADY_ASSIGNED",
+          message: "User already has this plan"
+        }
+      });
+    }
+
+    const updatedUser = await prisma.users.update({
+      where: {
+        id: userId
+      },
+      data: {
+        plan_id: numericPlanId
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        approval_status: true,
+        is_active: true,
+        plan_id: true,
+        plan: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            price_monthly: true,
+            daily_request_limit: true,
+            burst_limit: true,
+            state_limit: true
+          }
+        }
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: "User plan updated successfully",
+      data: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        role: updatedUser.role,
+        approvalStatus: updatedUser.approval_status,
+        isActive: updatedUser.is_active,
+        planId: updatedUser.plan_id,
+        plan: updatedUser.plan
+      }
+    });
+  } catch (error) {
+    console.error("Failed to update user plan:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to update user plan"
       }
     });
   }

@@ -3,7 +3,36 @@ const prisma = require("../lib/prisma");
 const { requireStateAccess } = require("../middleware/stateAccess");
 
 const router = express.Router();
-
+/**
+ * @swagger
+ * /v1/districts/{districtId}/sub-districts:
+ *   get:
+ *     summary: Get sub-districts for a district
+ *     description: Returns all sub-districts belonging to the specified district.
+ *     tags:
+ *       - Geography
+ *     security:
+ *       - ApiKeyAuth: []
+ *         ApiSecretAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: districtId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: District ID
+ *     responses:
+ *       200:
+ *         description: Sub-districts retrieved successfully
+ *       400:
+ *         description: Invalid district ID
+ *       401:
+ *         description: Invalid or missing API credentials
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Internal server error
+ */
 router.get(
   "/districts/:districtId/subdistricts",
   requireStateAccess,

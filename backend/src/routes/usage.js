@@ -3,7 +3,26 @@ const prisma = require("../lib/prisma");
 const jwtAuth = require("../middleware/jwtAuth");
 
 const router = express.Router();
-
+/**
+ * @swagger
+ * /v1/usage:
+ *   get:
+ *     summary: Get API usage
+ *     description: Returns API request usage, success and failure statistics, response-time information, daily usage, and recent requests for the authenticated B2B client.
+ *     tags:
+ *       - Usage
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Usage information retrieved successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: B2B access required
+ *       500:
+ *         description: Internal server error
+ */
 router.use(jwtAuth);
 
 router.get("/", async (req, res) => {

@@ -13,6 +13,9 @@ const apiKeysRouter = require("./routes/apiKeys");
 const subDistrictsRouter = require("./routes/subDistricts");
 const villagesRouter = require("./routes/villages");
 const searchRouter = require("./routes/search");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger");
+const adminLogsRouter = require("./routes/adminLogs");
 const adminAnalyticsRouter = require("./routes/adminAnalytics");
 const adminApiKeysRouter = require("./routes/adminApiKeys");
 const adminStateAccessRouter = require("./routes/adminStateAccess");
@@ -32,6 +35,11 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 app.use(requestMeta);
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 // ===============================
 // ROOT ENDPOINT
 // ===============================
@@ -82,6 +90,7 @@ app.use("/v1/admin/users", adminUsersRouter);
 app.use("/v1/admin", adminStateAccessRouter);
 app.use("/v1/admin", adminApiKeysRouter);
 app.use("/v1/admin/analytics", adminAnalyticsRouter);
+app.use("/v1/admin/logs", adminLogsRouter);
 app.use("/v1/dashboard/states", dashboardStatesRouter);
 app.use("/v1/usage", usageRouter);
 app.use("/v1", apiKeyAuth);

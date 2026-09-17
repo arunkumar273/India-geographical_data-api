@@ -78,7 +78,44 @@ router.use(jwtAuth);
 // CREATE API KEY
 // POST /v1/api-keys
 // ============================================================
-
+/**
+ * @swagger
+ * /v1/api-keys:
+ *   post:
+ *     summary: Create an API key
+ *     description: Creates a new API key and secret for the authenticated B2B client. Credentials are returned only when created.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Friendly name for the API key
+ *               expiresAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional expiration date
+ *     responses:
+ *       201:
+ *         description: API key created successfully
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: B2B account is not approved or active
+ *       409:
+ *         description: Maximum active API keys reached
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/", async (req, res) => {
   try {
     const { name, expiresAt } = req.body;
@@ -253,7 +290,33 @@ router.post("/", async (req, res) => {
     // IMPORTANT:
     // Raw key + secret are returned ONLY at creation.
     // --------------------------------------------------------
-
+/**
+ * @swagger
+ * /v1/api-keys/{id}/regenerate-secret:
+ *   post:
+ *     summary: Regenerate API secret
+ *     description: Generates a new API secret for an existing API key.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: API key ID
+ *     responses:
+ *       200:
+ *         description: API secret regenerated successfully
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: API key not found
+ *       500:
+ *         description: Internal server error
+ */
     return res.status(201).json({
       success: true,
       message: "API credentials created successfully",
@@ -290,7 +353,26 @@ router.post("/", async (req, res) => {
 // LIST API KEYS
 // GET /v1/api-keys
 // ============================================================
-
+/**
+ * @swagger
+ * /v1/api-keys:
+ *   get:
+ *     summary: List API keys
+ *     description: Returns the authenticated B2B client's API keys without exposing API secrets.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: API keys retrieved successfully
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: B2B access required
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/", async (req, res) => {
   try {
     const keys = await prisma.api_keys_new.findMany({
@@ -348,7 +430,32 @@ router.get("/", async (req, res) => {
 // REVOKE / DEACTIVATE API KEY
 // PATCH /v1/api-keys/:id/deactivate
 // ============================================================
-
+/**
+ * @swagger
+ * /v1/api-keys/{id}/deactivate:
+ *   patch:
+ *     summary: Deactivate an API key
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: API key ID
+ *     responses:
+ *       200:
+ *         description: API key deactivated successfully
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: API key not found
+ *       500:
+ *         description: Internal server error
+ */
 router.patch("/:id/deactivate", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -533,7 +640,32 @@ router.post("/:id/regenerate-secret", async (req, res) => {
 // ACTIVATE API KEY
 // PATCH /v1/api-keys/:id/activate
 // ============================================================
-
+/**
+ * @swagger
+ * /v1/api-keys/{id}/activate:
+ *   patch:
+ *     summary: Activate an API key
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: API key ID
+ *     responses:
+ *       200:
+ *         description: API key activated successfully
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: API key not found
+ *       500:
+ *         description: Internal server error
+ */
 router.patch("/:id/activate", async (req, res) => {
   try {
     const id = Number(req.params.id);

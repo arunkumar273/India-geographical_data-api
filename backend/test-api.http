@@ -1,0 +1,7 @@
+### Health Check
+GET http://localhost:3000/health
+
+
+### Admin API Logs
+GET http://localhost:3000/v1/admin/logs
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc4OTM1OTA3NywiZXhwIjoxNzg5NDQ1NDc3fQ.QjrgHG6pa3jgV02ERhPlifbS8J6IT8tX8Lk_wiGaNFM.eyJ1c2VySWQiOjIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc4OTI5NjM2MywiZXhwIjoxNzg5MzgyNzYzfQ.mNgUUsFCRL4jyOa7uAn1YBopFXUKFnxXhfCrd8_cDJM

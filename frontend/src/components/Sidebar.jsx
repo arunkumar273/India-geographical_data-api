@@ -128,7 +128,15 @@ function Sidebar({ admin = false }) {
             <span>⌂</span>
             Village Master
           </NavLink>
-
+          <NavLink
+            to="/admin/api-logs"
+            className={({ isActive }) =>
+             `nav-item ${isActive ? "active" : ""}`
+           }
+          >
+           <span>▣</span>
+            API Logs
+          </NavLink>
           <NavLink
             to="/admin/analytics"
             className={({ isActive }) =>
