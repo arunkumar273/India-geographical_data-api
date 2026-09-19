@@ -1,5 +1,9 @@
 const express = require("express");
 const prisma = require("../lib/prisma");
+const {
+  getCache,
+  setCache,
+} = require("../lib/cache");
 
 const router = express.Router();
 
@@ -27,31 +31,54 @@ const router = express.Router();
  */
 router.get("/", async (req, res) => {
   try {
+    const cacheKey = "geo:states";
+
+    // Check Redis cache first
+    const cachedStates = await getCache(cacheKey);
+
+    if (cachedStates) {
+      return res.json({
+        success: true,
+        count: cachedStates.length,
+        data: cachedStates,
+        meta: {
+          cached: true,
+        },
+      });
+    }
+
+    // Cache miss - fetch from PostgreSQL
     const states = await prisma.states.findMany({
       orderBy: {
-        state_name: "asc"
+        state_name: "asc",
       },
       select: {
         id: true,
         state_code: true,
-        state_name: true
-      }
+        state_name: true,
+      },
     });
 
-    res.json({
+    // Store result in Redis for 1 hour
+    await setCache(cacheKey, states, 3600);
+
+    return res.json({
       success: true,
       count: states.length,
-      data: states
+      data: states,
+      meta: {
+        cached: false,
+      },
     });
   } catch (error) {
     console.error("Failed to fetch states:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         code: "INTERNAL_ERROR",
-        message: "Failed to fetch states"
-      }
+        message: "Failed to fetch states",
+      },
     });
   }
 });
